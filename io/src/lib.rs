@@ -33,7 +33,10 @@ pub enum Event {
     NewLaunch { id: u32, name: String, weather: u32, altitude: u32, fuel_price: u32, payload_value: u32 },
     LaunchRegistration { id: u32, participant: ActorId },
     LaunchStarted { id: u32 },
-    LaunchFinished { id: u32 },
+    LaunchFinished {
+        id: u32,
+        stats: Vec<(ActorId, bool, u32, u32)>, // participant id, success, final altitude, earnings
+    },
     SessionInfo { weather: u32, altitude: u32, fuel_price: u32, payload_value: u32 },
     NoCurrentSession,
 }
@@ -47,6 +50,7 @@ pub struct CurrentSesionInfo {
     pub payload_value: u32,
 }
 
+#[derive(Default, Encode, Decode, TypeInfo)]
 pub struct ParticipantState {
     pub name: String,
     pub balance: u32,

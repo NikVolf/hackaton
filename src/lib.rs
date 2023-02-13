@@ -149,24 +149,25 @@ impl LaunchSite {
             alive: bool,
             fuel_left: u32,
             last_altitude: u32,
+            payload: u32,
         }
 
-        let session_data = self.session_info.take().expect("There should be active session to execute");
+        let session_data = self.current_session.take().expect("There should be active session to execute");
 
         let mut current_altitude = 0;
         let total_rounds = 3;
-        let weather = session_data.weather;
+        let _weather = session_data.weather;
 
-        let mut current_stats = BTreeMap<ActorId, CurrentStat>;
+        let mut current_stats: BTreeMap<ActorId, CurrentStat> = BTreeMap::new();
 
-        for (id, strategy) in session_data.participants.iter() {
-            fuel_left.insert(id, CurrentStat { alive: true, fuel_left: strategy.fuel } );
+        for (id, strategy) in session_data.registered.iter() {
+            current_stats.insert(*id, CurrentStat { alive: true, fuel_left: strategy.fuel, last_altitude: 0, payload: strategy.payload } );
         }
 
-        for rounds in 0..total_rounds {
-            let current_altitude += session_data.altitude / total_rounds;
+        for _ in 0..total_rounds {
+            current_altitude += session_data.altitude / total_rounds;
 
-            for (id, strategy) in session_data.participants.iter() {
+            for (id, strategy) in session_data.registered.iter() {
                 let fuel_burn = strategy.payload / total_rounds;
 
                 let current_stat = current_stats.get_mut(&id).expect("all have stats");
@@ -177,11 +178,29 @@ impl LaunchSite {
                     // fuel is over
                     current_stat.alive = false;
                 } else {
-                    current_stat.alive_altitude = current_altitude;
+                    current_stat.last_altitude = current_altitude;
                 }
 
                 // weather random affect?
             }
+        }
+
+        let mut outcome_participants = vec![];
+        for (id, stat) in current_stats.iter() {
+            let earnings = stat.payload * session_data.payload_value;
+
+            outcome_participants.push(
+                (
+                    *id,
+                    stat.alive,
+                    stat.last_altitude,
+                    earnings,
+                )
+            );
+
+            let leaderboard_entry = self.participants.get_mut(&id).expect("Should have existed in leaderboards");
+
+            leaderboard_entry.balance += earnings;
         }
 
         // handle round results
@@ -189,6 +208,7 @@ impl LaunchSite {
         msg::reply(
             Event::LaunchFinished {
                 id: 0,
+                stats: outcome_participants,
             },
             0,
         ).expect("failed to reply in ::new_session");
