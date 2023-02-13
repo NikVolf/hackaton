@@ -22,6 +22,7 @@ pub enum Action {
     ChangeParticipantName(String),
     StartNewSession,
     RegisterOnLaunch { fuel_amount: u32, payload_amount: u32 },
+    ExecuteSession,
 }
 
 #[derive(Encode, Debug, PartialEq, Eq, Decode, TypeInfo)]

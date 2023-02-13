@@ -142,6 +142,57 @@ impl LaunchSite {
             0,
         ).expect("failed to reply in ::new_session");
     }
+
+    fn execute_session(&mut self) {
+
+        struct CurrentStat {
+            alive: bool,
+            fuel_left: u32,
+            last_altitude: u32,
+        }
+
+        let session_data = self.session_info.take().expect("There should be active session to execute");
+
+        let mut current_altitude = 0;
+        let total_rounds = 3;
+        let weather = session_data.weather;
+
+        let mut current_stats = BTreeMap<ActorId, CurrentStat>;
+
+        for (id, strategy) in session_data.participants.iter() {
+            fuel_left.insert(id, CurrentStat { alive: true, fuel_left: strategy.fuel } );
+        }
+
+        for rounds in 0..total_rounds {
+            let current_altitude += session_data.altitude / total_rounds;
+
+            for (id, strategy) in session_data.participants.iter() {
+                let fuel_burn = strategy.payload / total_rounds;
+
+                let current_stat = current_stats.get_mut(&id).expect("all have stats");
+
+                if !current_stat.alive { continue; } // already failed;
+
+                if current_stat.fuel_left < fuel_burn {
+                    // fuel is over
+                    current_stat.alive = false;
+                } else {
+                    current_stat.alive_altitude = current_altitude;
+                }
+
+                // weather random affect?
+            }
+        }
+
+        // handle round results
+
+        msg::reply(
+            Event::LaunchFinished {
+                id: 0,
+            },
+            0,
+        ).expect("failed to reply in ::new_session");
+    }
 }
 
 #[gstd::async_main]
@@ -154,6 +205,7 @@ async fn main() {
         Action::ChangeParticipantName(name) => { launch_site.rename_participant(name); },
         Action::StartNewSession => { launch_site.new_session(); },
         Action::RegisterOnLaunch { fuel_amount, payload_amount } => { launch_site.register_on_launch(fuel_amount, payload_amount); },
+        Action::ExecuteSession => { launch_site.execute_session(); },
     }
 }
 
